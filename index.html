@@ -1,0 +1,209 @@
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width">
+  	<meta name="google-signin-client_id" content="455879692718-31a814ua0ch6tal2errkrtf4976ckq1h.apps.googleusercontent.com">
+
+	<title>It202 Final</title>
+	<link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+	 crossorigin="anonymous">
+	
+	<link rel="stylesheet" href="https://unpkg.com/material-components-web@0.40.0/dist/material-components-web.min.css" />
+	<link href="style.css" rel="stylesheet" type="text/css" />
+	<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <style>
+		.content {
+			display: none;
+			margin: 1em;
+		}
+        #map {
+        height: 100%;
+        width: 100%;
+      }
+        html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+	</style>
+</head>
+
+<body>
+	<!-- top nav bar -->
+	<header class="mdc-top-app-bar">
+		<div class="mdc-top-app-bar__row">
+			<section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
+				<a href="#" class="material-icons mdc-top-app-bar__navigation-icon">menu</a>
+				<span class="mdc-top-app-bar__title">Safe Park</span>
+			</section>
+		</div>
+	</header>
+
+	<!-- the navigation drawer -->
+	<aside class="mdc-drawer mdc-drawer--modal" data-mdc-auto-init="MDCDrawer">
+		<div class="mdc-drawer__header">
+			<h3 class="mdc-drawer__title">Mail</h3>
+			<h6 class="mdc-drawer__subtitle">email@material.io</h6>
+		</div>
+		<div class="mdc-drawer__content">
+			<nav class="mdc-list">
+				<a class="mdc-list-item mdc-list-item--activated" href="#homeContent" tabindex="0" aria-selected="true"><i class="material-icons mdc-list-item__graphic" aria-hidden="true">home</i>Home</a>		
+			</nav>
+		</div>
+	</aside>
+	
+      
+
+<div class="mdc-drawer-scrim"></div>
+<div id="contentArea" style="height:100%; width:100%;">
+    <div class="mdc-top-app-bar--fixed-adjust"></div>
+
+    <div id="homeContent" class="content" style="height:80%; width:100%;">
+        
+        <div id="map" style="height:100%; width:100%;"></map>
+        </div>
+
+    </div>
+        
+
+</div> 
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://unpkg.com/material-components-web@0.40.0/dist/material-components-web.min.js"></script>
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+
+<script>
+
+    var myPos;
+
+    $(document).ready(function() {
+        $("#cardTemp").hide();
+        hideScreens();
+        window.mdc.autoInit();
+        const drawer = $("aside")[0].MDCDrawer;
+
+        // open the drawer when the menu icon is clicked
+        $(".mdc-top-app-bar__navigation-icon").on("click", function(){
+            drawer.open = true;
+        });
+
+        
+
+        $("#homeContent").show();
+        
+
+        function hideScreens() {
+          $(".content").hide();
+          
+        }
+        
+        navigator.geolocation.getCurrentPosition(function (position) {
+         initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+         
+         map.setCenter(initialLocation);
+         myPos = {lat:position.coords.latitude, lng: position.coords.longitude}
+         loadStation();
+        });
+
+        
+
+
+
+    });
+
+function getDistance(lat1,lon1,lat2,lon2) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLon = deg2rad(lon2-lon1); 
+  var a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ; 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI/180)
+}
+
+
+var stationEndpoint = "https://data.cityofchicago.org/resource/9rg7-mz9y.json";
+
+var markers = [];
+
+
+function loadStation(){
+
+    $.get(stationEndpoint,function(response){
+
+        $.each(response,function(i,value){
+            var stringCord = [value.latitude,value.longitude];
+
+            var cord= {"lat":parseFloat(stringCord[0]),"lng":parseFloat(stringCord[1])};
+
+            var marker = new google.maps.Marker({
+                        position: cord,
+                        map: map});
+
+            var dist = getDistance(myPos.lat,myPos.lng,cord.lat,cord.lng)
+            var infoContent = "<div class='card-body'>"+
+                "<h5 class='card-title'>"+"District Name : "+value.district_name+"</h5>";
+            infoContent += "<h6 class='card-subtitle mb-2 text-muted'> Distance: " + dist.toFixed(2) +"km</h6>"; 
+            var infowindow = new google.maps.InfoWindow({content:infoContent});
+            marker.addListener('click',function(){
+                    infowindow.open(map,marker);
+                });
+
+            markers.push(marker);
+
+
+        });
+        
+    });
+}
+
+var map;
+var heatmap;
+
+var geocoder;
+function initMap() {
+    
+    map = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 41.8781, lng: -87.6298},
+    zoom: 15
+    });
+    geocoder = new google.maps.Geocoder;
+
+
+}
+
+    function setMapNull(){
+            for (var i = 0; i < parkMarkers.length; i++) {
+                parkMarkers[i].setMap(null);
+            }
+        }
+
+</script>
+
+  
+  
+	<!-- <script src="script.js"></script> -->
+  
+  
+  <!-- putting the Google library scripts at the top level due to use across screens -->
+   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZRyDrw7TR_8QJCAT2f6kKoSGdy45cx6E&callback=initMap"
+    async defer></script>
+  <script src="https://apis.google.com/js/platform.js"></script>
+  
+  <script src="https://apis.google.com/js/api.js"></script>
+
+
+</body>
+
+</html>
